@@ -1,0 +1,305 @@
+<html>
+<head>
+	<title>Observer Pattern Product Table</title>
+	<style>
+	.hide{
+		display: none;
+	}
+	#product-form {
+		margin-top: 20px;
+	}
+	#product-form input {
+		display: block;
+		margin-bottom: 15px;
+	}
+	#product-form input[type="submit"], #product-form input[type="button"] {
+		display: inline;
+	}
+	input[type="text"]{
+		width: 100px;
+		padding: 2px 3px;
+		border: 2px solid #A2C4DA;
+		font-size: 1.2em;
+	}
+	input[type="text"].invalid {
+		border: 2px solid red;
+		color: red;
+	}
+	table {
+		border-collapse: collapse;
+		margin-top: 20px;
+		margin-bottom: 20px;
+	}
+	table, th, td {
+		border: 1px solid black;
+	}
+	th, td {
+		padding: 10px;
+	}
+	th {
+		background: #e3e3e3;
+	}	
+	</style>
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+	<script>
+	jQuery(document).ready(function($) {
+		$("#product-form").submit(handle_submit);
+		$("input[type='text']").focus(mark_valid);
+		
+		function handle_submit(event) {
+			event.stopPropagation();
+			var status = validate(event)
+			if(!status) {
+				return false;
+			} else {
+				var form = $("#product-form"),
+				fields_to_gather = [];
+				form.find("input").map(function(i, field) {if(field.type.match(/text/)) { fields_to_gather.push(field.name); }});       
+				var product_data = gather_fields(form, fields_to_gather);		
+				display_product(product_data);
+		
+				// Prevent form from actually submitting
+				event.preventDefault();
+				return false;
+			}
+		}
+	
+		function validate(event) {
+			try {
+				var form = $(event.target),
+				required_fields = form.find("input[type='text']");
+				required_fields.each(function(index, identifier) {
+					var field = $(identifier);
+					var empty_field = field.val() == "";
+					
+                   
+					if( empty_field ) {
+						field.addClass("invalid");
+					} else if(numbers_only(field)) {
+						field.removeClass("invalid");
+					} else {
+//						field.removeClass("invalid");
+					};
+				});
+            
+				var invalid_fields = form.find(".invalid").map(function(index, field) {return field.id;});
+				var valid = invalid_fields.length == 0;
+				if(valid) {
+					mark_valid();
+				} else {
+				}
+            
+			} catch (x) {
+				console.log(x);
+			}
+			return valid;
+		}
+		function numbers_only(field) {
+			var value = field.val();
+			
+			if(field.attr("id") != "product") {
+				var floatRegex = '^[0-9]+(\.[0-9]{1,2})?$';
+				if(!value.match(floatRegex)) {
+					field.addClass("invalid");
+				}
+			}
+		}
+		function mark_valid() {
+			$("input[type='text']").removeClass("invalid");
+		}
+		
+		function gather_fields(form, fields_to_gather) {
+			var data = {},
+			fields_in_form = form.find("input");
+        
+			var found_fields = fields_in_form.filter(function(n, field) {
+				var name = $(field).attr('name');
+				var found = fields_to_gather.indexOf(name) != -1
+				return found;
+			});
+
+			$.map(found_fields, function(raw_field) {
+				var field = $(raw_field);
+				data[field.attr('name')] = field.val();
+			});
+			return data;
+		}
+		
+		function display_product(product_data) {
+			$("#product-table").append("<tr><td class='product'><input type='text' value='" + product_data["product"] + "' /></td><td class='qty'><input type='text' value='" + product_data["qty"] + "' /></td><td class='price'><input type='text' value='" + product_data["price"] + "' /></td><td class='subtotal'>" + calculate_subtotal(product_data) + "</td></tr>");
+			if($('.subtotal').length > 0) {
+				$('#edit-item').show();
+			}
+			reset_form();
+			calculate_grand_total();
+			addNewObserver();
+		}
+		
+		function calculate_subtotal(product_data) {
+			var qty = product_data["qty"],
+			price = product_data["price"];
+			return parseFloat(qty * price).toFixed(2);
+		}
+		
+		function calculate_grand_total() {
+			var total = 0;
+			$('.subtotal').each(function () {
+				var val = parseFloat($(this).text());
+				total = parseFloat(val) ? (parseFloat(total + val)) : parseFloat(total);
+			});
+			$('#grand-total').find('span').html(parseFloat(total).toFixed(2));
+		}
+		
+		function recalculate_subtotal() {
+			var total = 0;
+			$('.subtotal').each(function () {
+				var qty = $(this).closest("tr").find(".qty input").val(),
+				price = $(this).closest("tr").find(".price input").val();
+				total = parseFloat(qty * price).toFixed(2);
+				$(this).html(total);
+			});
+			calculate_grand_total();
+		}
+		
+		$('#add-item').click(function(){
+			$('#product-form').show();
+			$("#add-item").hide();
+		});
+		
+		$('#cancel').click(function(){
+			reset_form();
+		});
+		
+		function reset_form() {
+			$('#product-form')[0].reset();
+			$("#product-form").hide();
+			mark_valid();
+			$("#add-item").show();
+		}
+		
+		function ObserverList(){
+			this.observerList = [];
+		}
+ 
+		ObserverList.prototype.add = function( obj ){
+			return this.observerList.push( obj );
+		};
+ 
+		ObserverList.prototype.count = function(){
+			return this.observerList.length;
+		};
+ 
+		ObserverList.prototype.get = function( index ){
+			if( index > -1 && index < this.observerList.length ){
+				return this.observerList[ index ];
+			}
+		};
+ 
+		ObserverList.prototype.indexOf = function( obj, startIndex ){
+			var i = startIndex; 
+			while( i < this.observerList.length ){
+				if( this.observerList[i] === obj ){
+					return i;
+				}
+				i++;
+			}
+ 			return -1;
+		};
+ 
+		ObserverList.prototype.removeAt = function( index ){
+			this.observerList.splice( index, 1 );
+		};
+		
+		function Subject(){
+			this.observers = new ObserverList();
+		}
+ 
+		Subject.prototype.addObserver = function( observer ){
+			this.observers.add( observer );
+		};
+ 
+		Subject.prototype.removeObserver = function( observer ){
+			this.observers.removeAt( this.observers.indexOf( observer, 0 ) );
+		};
+ 
+		Subject.prototype.notify = function( context ){
+			var observerCount = this.observers.count();
+			for(var i=0; i < observerCount; i++){
+				this.observers.get(i).update( context );
+			}
+		};
+		
+		// The Observer
+		function Observer(){
+			this.update = function(){
+				// ...
+			};
+		}
+		
+		// Extend an object with an extension
+		function extend( extension, obj ){
+			for ( var key in extension ){
+				obj[key] = extension[key];
+			}
+		}
+ 
+		// References to our DOM elements
+ 
+		var controlButton = document.getElementById( "edit-item" );
+ 
+		// Concrete Subject
+ 
+		// Extend the controlling button with the Subject class
+		extend( new Subject(), controlButton );
+ 
+		// Clicking the button will trigger notifications to its observers
+		controlButton.onclick = function(){
+			controlButton.notify( controlButton );
+		};
+ 
+ 
+		// Concrete Observer
+ 
+		function addNewObserver(){
+			// Columns to be added
+			var qty = $(".qty"),
+			price = $(".price"),
+			subtotal = $(".subtotal");
+ 
+			// Extend the inputs with the Observer class
+			extend( new Observer(), qty, price, subtotal );
+ 
+			// Override with custom update behaviour
+			subtotal.update = function( value ){
+				recalculate_subtotal();
+			};
+ 
+			// Add the new observer to our list of observers
+			// for our main subject
+			controlButton.addObserver( subtotal );
+ 
+		}
+	});
+	</script>
+</head>
+<body>
+	<table cell-spacing="0" cell-padding="0" border="1" id="product-table">
+		<tr>
+			<th>Product</th>
+			<th>Qty</th>
+			<th>Price</th>
+			<th>Subtotal</th>
+		</tr>
+	</table>
+	<p id="grand-total">Grand total: $<span>0</span></p>
+	<input type="button" name="add-item" id="add-item" value="Add Item" />
+	<input type="button" name="edit-item" id="edit-item" value="Update Item(s)" class="hide" />
+	<form id="product-form" class="hide">
+		<label for="product">Product: </label><input type="text" name="product" id="product" />
+		<label for="qty">Qty: (numbers only) </label><input type="text" name="qty" id="qty" />
+		<label for="price">Price: (include at least 1 number before the decimal and do not include "$") </label><input type="text" name="price" id="price" />
+		<input type="submit" name="submit" id="submit" />
+		<input type="button" name="cancel" id="cancel" value="Cancel" />
+	</form>
+</body>
+</html>
