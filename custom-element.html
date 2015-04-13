@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html class="no-js">
+<head>
+	<title>Custom Element + jQuery Plugin Fallback</title>
+	<script language="javascript" type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+	<script>
+	jQuery(document).ready(
+		function($) {
+			if ("registerElement" in document) {
+				// Supported.
+				console.log("supported");
+				var MyCustomElementProto = Object.create(HTMLElement.prototype);
+				MyCustomElementProto.createdCallback = function() {
+					this.value = this.getAttribute("value");
+					this.innerHTML = "my value is: " + this.value;					
+				};
+				var MyCustomElement = document.registerElement("my-custom-element", {prototype: MyCustomElementProto});
+			} else {
+				$("<p/>").html("document.register() is not supported. Using div instead").appendTo("body");
+				$.fn.myCustomElement = function() {
+					var display_div = $("div"),
+					value = display_div.attr("value");
+					display_div.html("my value is: " + value);			
+				}
+				$('<div/>')
+				.attr('value','jquery is cool').appendTo("body")
+				.myCustomElement();
+				// now div innerHTML should read: my value is: jquery is cool
+				// Not supported.
+				console.log("not supported");
+			}
+		});
+		</script>
+	</head>
+	<body>
+		<my-custom-element value="harry">  
+		</my-custom-element>
+</body>
+</html>
